@@ -1,6 +1,6 @@
 /*
- * @author: Richard Poulson
- * @date: 6 Oct 2018
+ * @author Richard Poulson
+ * @date 6 Oct 2018
  *
  * WebServer object:
  * - receives HTTP requests, parses and verifies the data.
@@ -8,9 +8,12 @@
  * @references:
  *   https://www.geeksforgeeks.org/socket-programming-cc/
  *   https://stackoverflow.com/questions/1151582/pthread-function-from-a-class
+ *   https://stackoverflow.com/questions/4250013/is-destructor-called-if-sigint-or-sigstp-issued
+ *   http://www.cplusplus.com/reference/fstream/basic_ifstream/rdbuf/
  */
 
-#define BUFFER_SIZE 8192 // Size of buffers, in bytes (8KB)
+// if buffer is larger than ~ 200KB, may have to put buffers in heap (dynamic)
+#define BUFFER_SIZE 1048576 // Size of buffers, in bytes (1MB)
 #define NUM_CONNECTION_THREADS 8 // maximum number of client connections
 
 #include <stddef.h> // NULL, nullptr_t
@@ -35,66 +38,56 @@
 
 using namespace std;
 
+static volatile bool proceed = true;
+
 void SignalHandler(int signal); // signal handler for WebServer class
+void DateTimeRFC(char * buf); // append date and time (RFC 822) to buffer
+size_t ReceiveMessage(int, char *, struct PThreadResources *);
+
+void InitReqRecStructs(char*, struct RequestMessage*, struct ResponseMessage*);
 void * AcceptConnection(void * sharedResources); // PThread function, services clients
 
+// data structs for HTML header sections
 struct RequestMessage
 {
-  string method;
-  string uri;
-  string httpVersion;
-  string connection;
-  RequestMessage(string requestMethod = "GET", string version = "HTTP/1.1")
-  {
-    this->method = requestMethod;
-    this->httpVersion = version;
-  }
+  char method[32]; // GET,HEAD,POST
+  char uri[256]; // /,
+  char httpVersion[32]; // e.g. HTTP/1.1
+  char connection[32]; // keep-alive, close
 };
 struct ResponseMessage
 {
-  string httpVersion;
-  unsigned char statusCode;
-  string responsePhrase;
-  string date;
-  string length;
-  string connection;
-  string content;
-  FILE * message;
-  ResponseMessage(string version = "HTTP/1.1", unsigned char code = 200,
-          string phrase = "Document Follows")
-  {
-    this->httpVersion = version;
-    this->statusCode = code;
-    this->responsePhrase = phrase;
-  }
+  char httpVersion[32]; // e.g. HTTP/1.1
+  unsigned char statusCode; // e.g. 200
+  char connection[32]; // keep-alive, close
+  char content[32]; // e.g. "text/css"
 };
-
+// one struct's members are shared among PThreads
 struct PThreadResources {
-  // threads need to wait, even if only reading
-  pthread_mutex_t sock_mx, file_mx, dir_mx, regex_mx;
-  int sock; // file descriptor for server socket
-  FILE * file;
-  DIR * directory;
-  struct dirent *dir;
-  regex httpHeaderRegex; // used to verify if request is in valid format
+  pthread_mutex_t sock_mx, file_mx, dir_mx, regex_mx, cout_mx;
+  int sock; // server socket
+  ifstream ifs;
+  //FILE * file;
+  //DIR * directory;
+  //struct dirent *dir;
+  regex httpHeaderRegex; // checks HTTP method, URI, and HTTP version
 };
-
+//== WebServer, object contains parent sockets, pthreads create client socket
 class WebServer
 {
 public:
-  WebServer(unsigned short portNumber); // receives port number as parameter
+  WebServer(unsigned short portNumber);
   ~WebServer();
 private:
   struct PThreadResources * sharedResources;
-  // arrays to hold all pthread_t data types
   pthread_t httpConnections[NUM_CONNECTION_THREADS];
-  socklen_t clientLen;
   unsigned short portNum; // port to listen on
   struct sockaddr_in serverAddr; // server's addr
   int optval; // flag value for setsockopt
+
   void Initialize();
   bool CreateSocket();
   bool BindSocket();
   void StartHTTPService();
-  char* DateTimeRFC(); // return date and time in RFC format
+  void StopHTTPService();
 };
