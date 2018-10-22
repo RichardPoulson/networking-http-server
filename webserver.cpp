@@ -118,7 +118,6 @@ void * AcceptConnection(void * sharedResources) {
   bzero(buffer, BUFFER_SIZE);
   strcpy(buffer, request->httpVersion);
   strcat(buffer, " 200 OK\r\n");
-  cout << buffer << endl;
   DateTimeRFC(buffer);
   strcat(buffer, "Content-Length: ");
   strcat(buffer, to_string(numBytes).c_str());
