@@ -62,7 +62,7 @@ void WebServer::Initialize() {
   pthread_mutex_init(&sharedResources->regex_mx, NULL);
   // have to use \\w instead of just \w
   sharedResources->httpHeaderRegex = std::regex(
-    "^(GET|HEAD|POST) (\\/|(\\/.*)+\\.(html|txt|png|gif|jpg|css|js)) HTTP\\/\\d\\.\\d\r\n");
+    "^(GET|HEAD|POST|CONNECT) (\\/|(\\/.*)+\\.(html|txt|png|gif|jpg|css|js)) HTTP\\/\\d\\.\\d\r\n");
 }
 // DESTRUCTOR
 WebServer::~WebServer(){

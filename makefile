@@ -29,9 +29,9 @@ $(NAME) : driver.cpp $(DEPENDENCIES)
 clean :
 	$(CLEAN)
 
-#== Run: test compiled binary file with argument  
+#== Run: test compiled binary file with argument
 test : $(NAME)
-	./$(NAME) 8888
+	./$(NAME) 8007
 
 #== Recycle: remove made files, compile, then run test recipe
 recycle : $(NAME).cpp $(DEPENDENCIES)
